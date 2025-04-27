@@ -114,42 +114,46 @@ def generate_pdf_report(predictions, diet, advice, user_input):
             self.multi_cell(0, 7, body)
             self.ln()
 
-    pdf = PDF()
-    pdf.add_page()
-
-    pdf.chapter_title('Performance Metrics')
-    metrics = f"""Endurance Score: {predictions['endurance_score']}/10
-Calories Needed: {predictions['calories']} kcal
-Injury Risk: {predictions['injury_risk']}
-Optimal Sleep: {predictions['sleep_hours']} hours
-Protein Needs: {predictions['Protein_g']} g
-Carbohydrates Needs: {predictions['Carbs_g']} g
-Fats Needs: {predictions['Fats_g']} g"""
-    pdf.chapter_body(metrics)
-
-    pdf.chapter_title('Personalized Nutrition Plan')
-    diet_text = []
-    for meal, items in diet.items():
-        meal_items = []
-        for item in items:
-            clean_item = ''.join(char for char in item if ord(char) < 256)
-            meal_items.append(clean_item)
-        diet_text.append(f"{meal}:\n" + "\n".join(meal_items))
-    pdf.chapter_body("\n".join(diet_text))
-
-    pdf.chapter_title('Mental Performance Guide')
-    clean_advice = [''.join(char for char in item if ord(char) < 256) for item in advice]
-    pdf.chapter_body("\n".join(clean_advice))
-
-    pdf.chapter_title('User Details')
-    details = f"""Age: {user_input['Age']}
-Gender: {user_input['Gender']}
-Weight: {user_input['Weight']} kg
-Sport: {user_input['Sport_Type']}
-Exercise Type: {user_input['Exercise_Type']}"""
-    pdf.chapter_body(details)
-
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    try:
+        pdf = PDF()
+        pdf.add_page()
+    
+        pdf.chapter_title('Performance Metrics')
+        metrics = f"""Endurance Score: {predictions['endurance_score']}/10
+    Calories Needed: {predictions['calories']} kcal
+    Injury Risk: {predictions['injury_risk']}
+    Optimal Sleep: {predictions['sleep_hours']} hours
+    Protein Needs: {predictions['Protein_g']} g
+    Carbohydrates Needs: {predictions['Carbs_g']} g
+    Fats Needs: {predictions['Fats_g']} g"""
+        pdf.chapter_body(metrics)
+    
+        pdf.chapter_title('Personalized Nutrition Plan')
+        diet_text = []
+        for meal, items in diet.items():
+            meal_items = []
+            for item in items:
+                clean_item = ''.join(char for char in item if ord(char) < 256)
+                meal_items.append(clean_item)
+            diet_text.append(f"{meal}:\n" + "\n".join(meal_items))
+        pdf.chapter_body("\n".join(diet_text))
+    
+        pdf.chapter_title('Mental Performance Guide')
+        clean_advice = [''.join(char for char in item if ord(char) < 256) for item in advice]
+        pdf.chapter_body("\n".join(clean_advice))
+    
+        pdf.chapter_title('User Details')
+        details = f"""Age: {user_input['Age']}
+    Gender: {user_input['Gender']}
+    Weight: {user_input['Weight']} kg
+    Sport: {user_input['Sport_Type']}
+    Exercise Type: {user_input['Exercise_Type']}"""
+        pdf.chapter_body(details)
+    
+        return pdf.output(dest='S').encode('latin-1', 'replace')
+    except Exception as e:
+        st.error(f"Failed to generate PDF: {str(e)}")
+        return None
 
 # ==================== PREDICTION ENGINE ====================
 def load_models():
