@@ -57,19 +57,21 @@ def login():
                 conn = sqlite3.connect("neurofit_users.db")
                 c = conn.cursor()
                 try:
-                    c.execute("SELECT password_hash FROM users WHERE email = ?", (username.lower(),))
+                    c.execute('''
+                            SELECT password_hash, email FROM users 
+                            WHERE email = ? OR username = ?
+                        ''', (username.lower(), username.lower()))
                     result = c.fetchone()
 
                     if result and bcrypt.checkpw(password.encode(), result[0].encode()):
                         st.session_state.authenticated = True
-                        st.session_state.user_email = username.lower()
-                        user_details = get_user_details(username.lower())
+                        st.session_state.user_email = result[1]  # Store the actual email
+                        user_details = get_user_details(result[1])  # Fetch by email
                         if not user_details:
                             st.error("Account corrupted. Contact support.")
                             return
                         
                         st.session_state.user_details = user_details
-                        st.session_state.authenticated = True
                         st.rerun()
                     elif not result:
                         st.error("❌ User not found. Please Sign Up.")
