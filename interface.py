@@ -3,8 +3,12 @@ import random
 import streamlit as st
 import joblib
 import pandas as pd
-from fpdf import FPDF
-import account_details  # Ensure this is used for profile
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+import account_details
 
 data = pd.read_csv("athlete_performance_large.csv")
 
@@ -23,133 +27,177 @@ MODEL_FILES = {
 
 # ==================== RECOMMENDATION SYSTEMS ====================
 def generate_diet_plan(predictions, user_input):
-    calorie_needs = predictions['calories']
-    endurance = predictions['endurance_score']
-    weight = user_input.get('Weight', 70)
+    try:
+        calorie_needs = predictions.get('calories', 2000)
+        endurance = predictions.get('endurance_score', 5)
+        weight = user_input.get('Weight', 70)
 
-    protein_grams = predictions['Protein_g']
-    carb_grams = predictions['Carbs_g']
-    fat_grams = predictions['Fats_g']
+        protein_grams = predictions.get('Protein_g', 100)
+        carb_grams = predictions.get('Carbs_g', 300)
+        fat_grams = predictions.get('Fats_g', 70)
 
-    diet_plan = {
-        'Morning': [
-            f"🍳 Protein: {round(protein_grams*0.3)}g (Eggs/Greek Yogurt)",
-            f"🌾 Carbs: {round(carb_grams*0.3)}g (Oatmeal/Whole Grain)",
-            "🥑 Healthy Fats: 1/2 Avocado",
-            "💧 Hydration: 500ml water + electrolytes"
-        ],
-        'Pre-Workout': [
-            f"🍌 Carbs: {round(carb_grams*0.2)}g (Banana + Toast)",
-            "☕ Caffeine: Optional (100-200mg)"
-        ],
-        'Post-Workout': [
-            f"🍗 Protein: {round(protein_grams*0.4)}g (Chicken/Fish/Plant Protein)",
-            f"🍠 Carbs: {round(carb_grams*0.4)}g (Sweet Potato/Rice)",
-            "🥜 Fats: 1 tbsp Nut Butter",
-            "💧 Hydration: 500ml water + electrolytes"
-        ],
-        'Evening': [
-            f"🥩 Protein: {round(protein_grams*0.3)}g (Lean Meat/Tofu)",
-            f"🥦 Carbs: {round(carb_grams*0.1)}g (Vegetables)",
-            "🥜 Fats: 1 oz Nuts/Seeds",
-            "💧 Hydration: 500ml water"
-        ],
-        'Snacks': [
-            "Greek Yogurt with Berries",
-            "Handful of Nuts",
-            "Protein Shake (if needed)"
-        ]
-    }
+        diet_plan = {
+            'Morning': [
+                f"🍳 Protein: {round(protein_grams*0.3)}g (Eggs/Greek Yogurt)",
+                f"🌾 Carbs: {round(carb_grams*0.3)}g (Oatmeal/Whole Grain)",
+                "🥑 Healthy Fats: 1/2 Avocado",
+                "💧 Hydration: 500ml water + electrolytes"
+            ],
+            'Pre-Workout': [
+                f"🍌 Carbs: {round(carb_grams*0.2)}g (Banana + Toast)",
+                "☕ Caffeine: Optional (100-200mg)"
+            ],
+            'Post-Workout': [
+                f"🍗 Protein: {round(protein_grams*0.4)}g (Chicken/Fish/Plant Protein)",
+                f"🍠 Carbs: {round(carb_grams*0.4)}g (Sweet Potato/Rice)",
+                "🥜 Fats: 1 tbsp Nut Butter",
+                "💧 Hydration: 500ml water + electrolytes"
+            ],
+            'Evening': [
+                f"🥩 Protein: {round(protein_grams*0.3)}g (Lean Meat/Tofu)",
+                f"🥦 Carbs: {round(carb_grams*0.1)}g (Vegetables)",
+                "🥜 Fats: 1 oz Nuts/Seeds",
+                "💧 Hydration: 500ml water"
+            ],
+            'Snacks': [
+                "Greek Yogurt with Berries",
+                "Handful of Nuts",
+                "Protein Shake (if needed)"
+            ]
+        }
 
-    if predictions['sleep_hours'] > 8:
-        diet_plan['Evening'].append("🍵 Herbal Tea (Chamomile/Lavender)")
-    if endurance > 7:
-        diet_plan['Post-Workout'].append("+100g Complex Carbs for Recovery")
+        if predictions.get('sleep_hours', 7) > 8:
+            diet_plan['Evening'].append("🍵 Herbal Tea (Chamomile/Lavender)")
+        if endurance > 7:
+            diet_plan['Post-Workout'].append("+100g Complex Carbs for Recovery")
 
-    return diet_plan
+        return diet_plan
+    except Exception as e:
+        st.error(f"Diet plan generation failed: {str(e)}")
+        return None
 
 def generate_mental_advice(predictions, user_input):
-    injury_risk = predictions['injury_risk']
-    fatigue = user_input.get('Fatigue_Score', 5)
-    sleep = predictions['sleep_hours']
+    try:
+        injury_risk = predictions.get('injury_risk', 'Moderate')
+        fatigue = user_input.get('Fatigue_Score', 5)
+        sleep = predictions.get('sleep_hours', 7)
 
-    advice = []
+        advice = []
 
-    if fatigue > 7:
-        advice.append("🧘 High Fatigue: Try 2x daily 10-min meditation sessions")
-        advice.append("🌿 Adaptogens: Consider ashwagandha or rhodiola supplements")
-    elif fatigue >= 5:
-        advice.append("😌 Moderate Fatigue: Practice deep breathing exercises 3x/day")
+        if fatigue > 7:
+            advice.append("🧘 High Fatigue: Try 2x daily 10-min meditation sessions")
+            advice.append("🌿 Adaptogens: Consider ashwagandha or rhodiola supplements")
+        elif fatigue >= 5:
+            advice.append("😌 Moderate Fatigue: Practice deep breathing exercises 3x/day")
 
-    if injury_risk == 'Severe':
-        advice.append("🩹 Critical Recovery Needed: Schedule sports massage and reduce intensity by 50% this week")
-    elif injury_risk == 'Moderate':
-        advice.append("⚠️ Injury Warning: Increase warm-up time to 20 minutes")
+        if injury_risk == 'Severe':
+            advice.append("🩹 Critical Recovery Needed: Schedule sports massage and reduce intensity by 50% this week")
+        elif injury_risk == 'Moderate':
+            advice.append("⚠️ Injury Warning: Increase warm-up time to 20 minutes")
 
-    if sleep < 6:
-        advice.append("💤 Sleep Deficiency: Try 1-3mg melatonin 1hr before bed")
-    advice.append(f"⏰ Sleep Consistency: Maintain {sleep:.1f} hour sleep schedule")
-    advice.append("📝 Daily Reflection: Spend 5 minutes journaling post-workout")
-    advice.append("🌳 Nature Therapy: Add 20-min outdoor walks 3x/week")
+        if sleep < 6:
+            advice.append("💤 Sleep Deficiency: Try 1-3mg melatonin 1hr before bed")
+        advice.append(f"⏰ Sleep Consistency: Maintain {sleep:.1f} hour sleep schedule")
+        advice.append("📝 Daily Reflection: Spend 5 minutes journaling post-workout")
+        advice.append("🌳 Nature Therapy: Add 20-min outdoor walks 3x/week")
 
-    return advice
+        return advice
+    except Exception as e:
+        st.error(f"Mental advice generation failed: {str(e)}")
+        return None
 
-# ==================== PDF GENERATION ====================
+# ==================== PDF GENERATION (REPORTLAB) ====================
 def generate_pdf_report(predictions, diet, advice, user_input):
-    class PDF(FPDF):
-        def header(self):
-            self.set_font('Arial', 'B', 16)
-            self.cell(0, 10, 'NeuroFit', 0, 1, 'C')
-            self.set_font('Arial', 'B', 12)
-            self.cell(0, 10, 'Athlete Performance Report', 0, 1, 'C')
-            self.ln(5)
-
-        def chapter_title(self, title):
-            self.set_font('Arial', 'B', 12)
-            self.cell(0, 10, title, 0, 1)
-            self.ln(2)
-
-        def chapter_body(self, body):
-            self.set_font('Arial', '', 12)
-            self.multi_cell(0, 7, body)
-            self.ln()
-
-    pdf = PDF()
-    pdf.add_page()
-
-    pdf.chapter_title('Performance Metrics')
-    metrics = f"""Endurance Score: {predictions['endurance_score']}/10
-Calories Needed: {predictions['calories']} kcal
-Injury Risk: {predictions['injury_risk']}
-Optimal Sleep: {predictions['sleep_hours']} hours
-Protein Needs: {predictions['Protein_g']} g
-Carbohydrates Needs: {predictions['Carbs_g']} g
-Fats Needs: {predictions['Fats_g']} g"""
-    pdf.chapter_body(metrics)
-
-    pdf.chapter_title('Personalized Nutrition Plan')
-    diet_text = []
-    for meal, items in diet.items():
-        meal_items = []
-        for item in items:
-            clean_item = ''.join(char for char in item if ord(char) < 256)
-            meal_items.append(clean_item)
-        diet_text.append(f"{meal}:\n" + "\n".join(meal_items))
-    pdf.chapter_body("\n".join(diet_text))
-
-    pdf.chapter_title('Mental Performance Guide')
-    clean_advice = [''.join(char for char in item if ord(char) < 256) for item in advice]
-    pdf.chapter_body("\n".join(clean_advice))
-
-    pdf.chapter_title('User Details')
-    details = f"""Age: {user_input['Age']}
-Gender: {user_input['Gender']}
-Weight: {user_input['Weight']} kg
-Sport: {user_input['Sport_Type']}
-Exercise Type: {user_input['Exercise_Type']}"""
-    pdf.chapter_body(details)
-
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    try:
+        buffer = BytesIO()
+        
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        
+        # Custom styles
+        styles.add(ParagraphStyle(
+            name='CenterTitle',
+            parent=styles['Heading1'],
+            alignment=TA_CENTER,
+            spaceAfter=12,
+            fontSize=16,
+            textColor='#333333'
+        ))
+        
+        styles.add(ParagraphStyle(
+            name='SectionHeader',
+            parent=styles['Heading2'],
+            spaceBefore=12,
+            spaceAfter=6,
+            textColor='#0066cc'
+        ))
+        
+        content = []
+        
+        # Header
+        content.append(Paragraph("NeuroFit Performance Report", styles['CenterTitle']))
+        content.append(Spacer(1, 24))
+        
+        # 1. Performance Metrics
+        content.append(Paragraph("Performance Metrics", styles['SectionHeader']))
+        metrics = [
+            f"<b>Endurance Score:</b> {predictions.get('endurance_score', 'N/A')}/10",
+            f"<b>Calories Needed:</b> {predictions.get('calories', 'N/A')} kcal",
+            f"<b>Injury Risk:</b> {predictions.get('injury_risk', 'N/A')}",
+            f"<b>Optimal Sleep:</b> {predictions.get('sleep_hours', 'N/A')} hours",
+            f"<b>Protein Needs:</b> {predictions.get('Protein_g', 'N/A')} g",
+            f"<b>Carbohydrates Needs:</b> {predictions.get('Carbs_g', 'N/A')} g",
+            f"<b>Fats Needs:</b> {predictions.get('Fats_g', 'N/A')} g"
+        ]
+        for metric in metrics:
+            content.append(Paragraph(metric, styles['Normal']))
+            content.append(Spacer(1, 4))
+        content.append(Spacer(1, 12))
+        
+        # 2. Nutrition Plan
+        content.append(Paragraph("Personalized Nutrition Plan", styles['SectionHeader']))
+        if diet:
+            for meal, items in diet.items():
+                content.append(Paragraph(f"<b>{meal}:</b>", styles['Normal']))
+                for item in items:
+                    content.append(Paragraph(f"• {item}", styles['Normal']))
+                    content.append(Spacer(1, 2))
+                content.append(Spacer(1, 6))
+        else:
+            content.append(Paragraph("No diet plan available", styles['Normal']))
+        content.append(Spacer(1, 12))
+        
+        # 3. Mental Performance Guide
+        content.append(Paragraph("Mental Performance Guide", styles['SectionHeader']))
+        if advice:
+            for item in advice:
+                content.append(Paragraph(f"• {item}", styles['Normal']))
+                content.append(Spacer(1, 4))
+        else:
+            content.append(Paragraph("No advice available", styles['Normal']))
+        content.append(Spacer(1, 12))
+        
+        # 4. User Details
+        content.append(Paragraph("User Details", styles['SectionHeader']))
+        details = [
+            f"<b>Age:</b> {user_input.get('Age', 'N/A')}",
+            f"<b>Gender:</b> {user_input.get('Gender', 'N/A')}",
+            f"<b>Weight:</b> {user_input.get('Weight', 'N/A')} kg",
+            f"<b>Sport:</b> {user_input.get('Sport_Type', 'N/A')}",
+            f"<b>Exercise Type:</b> {user_input.get('Exercise_Type', 'N/A')}"
+        ]
+        for detail in details:
+            content.append(Paragraph(detail, styles['Normal']))
+            content.append(Spacer(1, 4))
+        
+        doc.build(content)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        return pdf_bytes
+        
+    except Exception as e:
+        st.error(f"PDF generation error: {str(e)}")
+        return None
 
 # ==================== PREDICTION ENGINE ====================
 def load_models():
@@ -186,9 +234,8 @@ def predict_performance(models, user_input):
         carbs = max(100, min(800, models['carbs'].predict(input_df)[0]))
         fats = max(20, min(150, models['fats'].predict(input_df)[0]))
 
-        # Get injury probability and classify using thresholds
         injury_proba = models['injury'].predict_proba(input_df)[0]
-        max_prob = max(injury_proba)  # Get highest probability
+        max_prob = max(injury_proba)
         injury_risk = (
             "Minor" if 0.25 <= max_prob < 0.5 else
             "Moderate" if 0.5 <= max_prob < 0.75 else
@@ -210,9 +257,7 @@ def predict_performance(models, user_input):
         return None
 
 # ==================== STREAMLIT INTERFACE ====================
-
 def logout():
-    """Reset session states and rerun to show login page"""
     st.session_state.authenticated = False
     st.session_state.show_signup = False
     if 'user_email' in st.session_state:
@@ -224,9 +269,9 @@ def profile():
     st.rerun()
 
 def calculate_metric_scores(predictions):
-    endurance_score = predictions['endurance_score'] * 10
-    injury_score = predictions['raw_injury_prob']  # Direct probability percentage
-    sleep_score = min(predictions['sleep_hours'] / 10 * 100, 100)
+    endurance_score = predictions.get('endurance_score', 0) * 10
+    injury_score = predictions.get('raw_injury_prob', 0)
+    sleep_score = min(predictions.get('sleep_hours', 0) / 10 * 100, 100)
     
     return {
         'Endurance': endurance_score,
@@ -245,11 +290,10 @@ def dashboard():
         st.session_state.models = load_models()
         st.session_state.models_loaded = st.session_state.models is not None
     if 'user_details' not in st.session_state:
-        st.session_state.user_details = {'Age': 25}
-    
-    """Null-safe dashboard"""
+        st.session_state.user_details = {'Age': 25, 'Gender': 'Male'}
+
     if not st.session_state.get("user_details"):
-        st.error("Session expired. Re-login required.")
+        st.error("Session expired. Please login again.")
         logout()
         return
 
@@ -257,6 +301,7 @@ def dashboard():
         account_details.account()
         return
 
+    # Account controls
     col1, col2 = st.columns([5, 2])
     with col2:
         profile_menu = st.selectbox(
@@ -270,15 +315,14 @@ def dashboard():
             profile()
         elif profile_menu == "Logout":
             with st.spinner("Logging out..."):
-                time.sleep(2)
+                time.sleep(1)
                 logout()
 
     st.markdown("## 🏋️‍♂️ Athlete Information")
     col1, col2, col3 = st.columns([1, 1.5, 1.5])
 
-
-    age = st.session_state.user_details['Age']
-    gender = st.session_state.user_details['Gender']
+    age = st.session_state.user_details.get('Age', 25)
+    gender = st.session_state.user_details.get('Gender', 'Male')
 
     with col1:
         sport = st.selectbox("Primary Sport", data.Sport_Type.unique().tolist(), index=None, placeholder="Enter your primary sport")
@@ -288,31 +332,45 @@ def dashboard():
     with col2:
         exercise_type = st.selectbox("Exercise Type", ["Endurance", "Strength", "HIIT", "Skill Training", "Recovery"], index=None, placeholder="Enter your exercise type")
         weight = st.number_input("Weight (kg)", min_value=40, max_value=150, value=None, placeholder="Enter your weight")
-        speed_score = st.number_input("Running Speed (km/h)", min_value=10.0, max_value=30.0, value=None, placeholder="Enter your speed score", step=0.01)
+        speed_score = st.number_input("Running Speed (km/h)", min_value=10.0, max_value=30.0, value=None, placeholder="Enter your speed score", step=0.1)
 
     with col3:
         duration = st.number_input("Duration (min)", min_value=10, max_value=300, value=None, placeholder="Enter your workout duration")
         intensity = st.selectbox("Intensity Level", ["Low", "Medium", "High"], index=None, placeholder="Enter your intensity level")    
-        fatigue = st.slider("Fatigue (1-10)", 1, 10, 8)
-    
-    def check_details():
-        if age is None or exercise_type is None or height is None or hydration is None or gender is None or duration is None or weight is None or speed_score is None or sport is None or intensity is None or fatigue is None:
-            st.error("Please fill in all fields.")
+        fatigue = st.slider("Fatigue (1-10)", 1, 10, 5)
+
+    def validate_inputs():
+        required = {
+            'Age': age,
+            'Gender': gender,
+            'Sport': sport,
+            'Height': height,
+            'Exercise Type': exercise_type,
+            'Weight': weight,
+            'Duration': duration,
+            'Intensity': intensity
+        }
+        missing = [k for k, v in required.items() if v is None]
+        if missing:
+            st.error(f"Please fill in: {', '.join(missing)}")
             return False
         return True
 
-    st.html("<hr>")
+    st.markdown("---")
 
     if st.button("Analyze My Performance", type="primary", use_container_width=True):
-        if not st.session_state.models_loaded:
-            st.error("Models failed to load. Please check model files.")
+        if not validate_inputs():
             return
 
-        try:
-            heart_rate = 220 - age
-            strength_score = 100 / weight if weight < 100 else 150 / weight
+        if not st.session_state.models_loaded:
+            st.error("Models failed to load. Please try again.")
+            return
 
-            with st.spinner("Analyzing your performance..."):
+        with st.spinner("Analyzing your performance..."):
+            try:
+                heart_rate = 220 - age
+                strength_score = 100 / weight if weight < 100 else 150 / weight
+
                 user_input = {
                     'Age': age,
                     'Gender': gender,
@@ -329,25 +387,25 @@ def dashboard():
                 }
 
                 st.session_state.predictions = predict_performance(st.session_state.models, user_input)
-        except TypeError:
-            check_details()
+            except Exception as e:
+                st.error(f"Analysis failed: {str(e)}")
 
     if st.session_state.predictions:
         st.markdown("## 📝 Performance Summary")
         col1, col2 = st.columns([1, 2])
         with col1:
             st.markdown("### Key Metrics")
-            st.metric("Endurance Score", f"{st.session_state.predictions['endurance_score']}/10")
-            st.metric("Injury Risk", st.session_state.predictions['injury_risk'])
+            st.metric("Endurance Score", f"{st.session_state.predictions.get('endurance_score', 'N/A')}/10")
+            st.metric("Injury Risk", st.session_state.predictions.get('injury_risk', 'N/A'))
         with col2:
             st.markdown("### Key Recommendations")
-            st.write("- Follow recommended nutrition plan from PDF report")
-            st.write("- Implement recovery strategies based on injury risk")
-            st.write("- Monitor sleep patterns and adjust training accordingly")
-        
-        st.html("<hr>")
+            st.write("- Follow recommended nutrition plan")
+            st.write("- Implement recovery strategies")
+            st.write("- Monitor sleep patterns")
 
-        with st.spinner("Visualizing your performance..."):
+        st.markdown("---")
+
+        with st.spinner("Preparing visualizations..."):
             st.markdown("## Performance Report")
             metric_scores = calculate_metric_scores(st.session_state.predictions)
             df_metrics = pd.DataFrame({
@@ -355,53 +413,60 @@ def dashboard():
                 'Values': list(metric_scores.values())
             })
 
-        df_metrics_pivot = df_metrics.pivot(
-            columns='Metrics',
-            values='Values'
-        ).reset_index(drop=True)
+            st.bar_chart(
+                df_metrics.set_index('Metrics'),
+                color=["#4B9BFF", "#FF4B4B", "#2CA02C"],
+                height=400
+            )
+            st.caption("🔹 Higher scores are better for Endurance and Sleep. Lower is better for Injury Risk.")
 
-        bar_colors = {
-            "Endurance": "#4B9BFF",
-            "Injury Risk": "#FF4B4B",
-            "Sleep Quality": "#2CA02C"
-        }
+        st.markdown("---")
 
-        st.bar_chart(
-            df_metrics_pivot,
-            color=[bar_colors[col] for col in df_metrics_pivot.columns],
-            height=400
-        )
+        st.markdown("## 🥗 Nutrition Recommendations")
+        cols = st.columns(5)
+        with cols[0]:
+            st.metric("Proteins", f"{st.session_state.predictions.get('Protein_g', 'N/A')}g")
+        with cols[1]:
+            st.metric("Carbs", f"{st.session_state.predictions.get('Carbs_g', 'N/A')}g")
+        with cols[2]:
+            st.metric("Fats", f"{st.session_state.predictions.get('Fats_g', 'N/A')}g")
+        with cols[3]:
+            st.metric("Sleep", f"{st.session_state.predictions.get('sleep_hours', 'N/A')}hrs")
+        with cols[4]:
+            st.metric("Calories", f"{st.session_state.predictions.get('calories', 'N/A')}kcal")
 
-        st.caption("🔹 Higher scores are better for Endurance and Sleep. Lower is better for Injury Risk.")
-        
-        st.html("<hr>")
+        try:
+            diet = generate_diet_plan(st.session_state.predictions, {'Weight': weight})
+            advice = generate_mental_advice(st.session_state.predictions, {'Fatigue_Score': fatigue})
+            
+            if diet and advice:
+                pdf_bytes = generate_pdf_report(
+                    st.session_state.predictions,
+                    diet,
+                    advice,
+                    {
+                        'Age': age,
+                        'Gender': gender,
+                        'Weight': weight,
+                        'Sport_Type': sport,
+                        'Exercise_Type': exercise_type
+                    }
+                )
 
-        st.markdown("## 🥗 Nutrition Recommendations (Needed)")
-        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 2])
-        with col1:
-            st.metric("Proteins", f"{st.session_state.predictions['Protein_g']} g")
-        with col2:
-            st.metric("Carbohydrates", f"{st.session_state.predictions['Carbs_g']} g") 
-        with col3:
-            st.metric("Fats", f"{st.session_state.predictions['Fats_g']} g")
-        with col4:
-            sleep_hours = st.session_state.predictions['sleep_hours']
-            st.metric("Sleep Hours", f"{sleep_hours} hrs")
-        with col5:
-            calories = st.session_state.predictions['calories']
-            st.metric("Calories", f"{calories} kcal")
-
-        diet = generate_diet_plan(st.session_state.predictions, {'Weight': weight})
-        advice = generate_mental_advice(st.session_state.predictions, {'Fatigue_Score': fatigue})
-        pdf_bytes = generate_pdf_report(st.session_state.predictions, diet, advice, {
-            'Age': age,
-            'Gender': gender,
-            'Weight': weight,
-            'Sport_Type': sport,
-            'Exercise_Type': exercise_type
-        })
-
-        st.download_button("📥 Download Full Report", data=pdf_bytes, file_name="athlete_performance_report.pdf", mime="application/pdf", use_container_width=True)
+                if pdf_bytes:
+                    st.download_button(
+                        "📥 Download Full Report",
+                        data=pdf_bytes,
+                        file_name="neurofit_performance_report.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                else:
+                    st.warning("Could not generate PDF report")
+            else:
+                st.error("Missing data for report generation")
+        except Exception as e:
+            st.error(f"Report generation failed: {str(e)}")
 
 if __name__ == "__main__":
     dashboard()
