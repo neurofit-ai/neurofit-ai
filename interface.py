@@ -96,63 +96,70 @@ def generate_mental_advice(predictions, user_input):
 
 # ==================== PDF GENERATION ====================
 def generate_pdf_report(predictions, diet, advice, user_input):
-    class PDF(FPDF):
-        def header(self):
-            self.set_font('Arial', 'B', 16)
-            self.cell(0, 10, 'NeuroFit', 0, 1, 'C')
-            self.set_font('Arial', 'B', 12)
-            self.cell(0, 10, 'Athlete Performance Report', 0, 1, 'C')
-            self.ln(5)
-
-        def chapter_title(self, title):
-            self.set_font('Arial', 'B', 12)
-            self.cell(0, 10, title, 0, 1)
-            self.ln(2)
-
-        def chapter_body(self, body):
-            self.set_font('Arial', '', 12)
-            self.multi_cell(0, 7, body)
-            self.ln()
-
+    """Generate a PDF report with performance metrics, diet plan, and recommendations."""
     try:
+        class PDF(FPDF):
+            def header(self):
+                self.set_font('Arial', 'B', 16)
+                self.cell(0, 10, 'NeuroFit', 0, 1, 'C')
+                self.set_font('Arial', 'B', 12)
+                self.cell(0, 10, 'Athlete Performance Report', 0, 1, 'C')
+                self.ln(5)
+
+            def chapter_title(self, title):
+                self.set_font('Arial', 'B', 12)
+                self.cell(0, 10, title, 0, 1)
+                self.ln(2)
+
+            def chapter_body(self, body):
+                self.set_font('Arial', '', 12)
+                self.multi_cell(0, 7, body)
+                self.ln()
+
         pdf = PDF()
         pdf.add_page()
-    
+
+        # 1. Performance Metrics
         pdf.chapter_title('Performance Metrics')
-        metrics = f"""Endurance Score: {predictions['endurance_score']}/10
-    Calories Needed: {predictions['calories']} kcal
-    Injury Risk: {predictions['injury_risk']}
-    Optimal Sleep: {predictions['sleep_hours']} hours
-    Protein Needs: {predictions['Protein_g']} g
-    Carbohydrates Needs: {predictions['Carbs_g']} g
-    Fats Needs: {predictions['Fats_g']} g"""
+        metrics = f"""Endurance Score: {predictions.get('endurance_score', 'N/A')}/10
+Calories Needed: {predictions.get('calories', 'N/A')} kcal
+Injury Risk: {predictions.get('injury_risk', 'N/A')}
+Optimal Sleep: {predictions.get('sleep_hours', 'N/A')} hours
+Protein Needs: {predictions.get('Protein_g', 'N/A')} g
+Carbohydrates Needs: {predictions.get('Carbs_g', 'N/A')} g
+Fats Needs: {predictions.get('Fats_g', 'N/A')} g"""
         pdf.chapter_body(metrics)
-    
+
+        # 2. Nutrition Plan
         pdf.chapter_title('Personalized Nutrition Plan')
         diet_text = []
         for meal, items in diet.items():
             meal_items = []
             for item in items:
-                clean_item = ''.join(char for char in item if ord(char) < 256)
+                clean_item = ''.join(char for char in str(item) if ord(char) < 256)
                 meal_items.append(clean_item)
             diet_text.append(f"{meal}:\n" + "\n".join(meal_items))
         pdf.chapter_body("\n".join(diet_text))
-    
+
+        # 3. Mental Performance Guide
         pdf.chapter_title('Mental Performance Guide')
-        clean_advice = [''.join(char for char in item if ord(char) < 256) for item in advice]
+        clean_advice = [''.join(char for char in str(item) if ord(char) < 256) for item in advice]
         pdf.chapter_body("\n".join(clean_advice))
-    
+
+        # 4. User Details
         pdf.chapter_title('User Details')
-        details = f"""Age: {user_input['Age']}
-    Gender: {user_input['Gender']}
-    Weight: {user_input['Weight']} kg
-    Sport: {user_input['Sport_Type']}
-    Exercise Type: {user_input['Exercise_Type']}"""
+        details = f"""Age: {user_input.get('Age', 'N/A')}
+Gender: {user_input.get('Gender', 'N/A')}
+Weight: {user_input.get('Weight', 'N/A')} kg
+Sport: {user_input.get('Sport_Type', 'N/A')}
+Exercise Type: {user_input.get('Exercise_Type', 'N/A')}"""
         pdf.chapter_body(details)
-    
+
         return pdf.output(dest='S').encode('latin-1', 'replace')
+
     except Exception as e:
-        st.error(f"Failed to generate PDF: {str(e)}")
+        import traceback
+        traceback.print_exc()  # Log the error for debugging
         return None
 
 # ==================== PREDICTION ENGINE ====================
@@ -392,8 +399,11 @@ def dashboard():
             sleep_hours = st.session_state.predictions['sleep_hours']
             st.metric("Sleep Hours", f"{sleep_hours} hrs")
         with col5:
-            calories = st.session_state.predictions['calories']
-            st.metric("Calories", f"{calories} kcal")
+            try:
+                calories = st.session_state.predictions.get('calories', 0)  # Safely get calories
+                st.metric("Calories", f"{calories} kcal")
+            except Exception as e:
+                st.error(f"Failed to display metrics: {str(e)}")
 
         diet = generate_diet_plan(st.session_state.predictions, {'Weight': weight})
         advice = generate_mental_advice(st.session_state.predictions, {'Fatigue_Score': fatigue})
