@@ -96,121 +96,60 @@ def generate_mental_advice(predictions, user_input):
 
 # ==================== PDF GENERATION ====================
 def generate_pdf_report(predictions, diet, advice, user_input):
-    """
-    Generate a PDF performance report with error handling at every stage.
-    Returns PDF bytes if successful, None otherwise.
-    """
-    try:
-        # Validate inputs
-        if not all([predictions, diet, advice, user_input]):
-            raise ValueError("Missing required input data")
-            
-        if not isinstance(predictions, dict):
-            raise TypeError("Predictions must be a dictionary")
-            
-        # Initialize PDF
-        class PDF(FPDF):
-            def header(self):
-                try:
-                    self.set_font('Arial', 'B', 16)
-                    self.cell(0, 10, 'NeuroFit', 0, 1, 'C')
-                    self.set_font('Arial', 'B', 12)
-                    self.cell(0, 10, 'Athlete Performance Report', 0, 1, 'C')
-                    self.ln(5)
-                except Exception as e:
-                    raise RuntimeError(f"PDF header failed: {str(e)}")
+    class PDF(FPDF):
+        def header(self):
+            self.set_font('Arial', 'B', 16)
+            self.cell(0, 10, 'NeuroFit', 0, 1, 'C')
+            self.set_font('Arial', 'B', 12)
+            self.cell(0, 10, 'Athlete Performance Report', 0, 1, 'C')
+            self.ln(5)
 
-            def chapter_title(self, title):
-                try:
-                    self.set_font('Arial', 'B', 12)
-                    self.cell(0, 10, str(title), 0, 1)
-                    self.ln(2)
-                except Exception as e:
-                    raise RuntimeError(f"PDF title failed: {str(e)}")
+        def chapter_title(self, title):
+            self.set_font('Arial', 'B', 12)
+            self.cell(0, 10, title, 0, 1)
+            self.ln(2)
 
-            def chapter_body(self, body):
-                try:
-                    self.set_font('Arial', '', 12)
-                    self.multi_cell(0, 7, str(body))
-                    self.ln()
-                except Exception as e:
-                    raise RuntimeError(f"PDF body failed: {str(e)}")
+        def chapter_body(self, body):
+            self.set_font('Arial', '', 12)
+            self.multi_cell(0, 7, body)
+            self.ln()
 
-        pdf = PDF()
-        pdf.add_page()
+    pdf = PDF()
+    pdf.add_page()
 
-        # 1. Performance Metrics
-        try:
-            metrics_data = [
-                f"Endurance Score: {predictions.get('endurance_score', 'N/A')}/10",
-                f"Calories Needed: {predictions.get('calories', 'N/A')} kcal",
-                f"Injury Risk: {predictions.get('injury_risk', 'N/A')}",
-                f"Optimal Sleep: {predictions.get('sleep_hours', 'N/A')} hours",
-                f"Protein Needs: {predictions.get('Protein_g', 'N/A')} g",
-                f"Carbohydrates Needs: {predictions.get('Carbs_g', 'N/A')} g",
-                f"Fats Needs: {predictions.get('Fats_g', 'N/A')} g"
-            ]
-            pdf.chapter_title('Performance Metrics')
-            pdf.chapter_body("\n".join(metrics_data))
-        except Exception as e:
-            raise RuntimeError(f"Metrics section failed: {str(e)}")
+    pdf.chapter_title('Performance Metrics')
+    metrics = f"""Endurance Score: {predictions['endurance_score']}/10
+Calories Needed: {predictions['calories']} kcal
+Injury Risk: {predictions['injury_risk']}
+Optimal Sleep: {predictions['sleep_hours']} hours
+Protein Needs: {predictions['Protein_g']} g
+Carbohydrates Needs: {predictions['Carbs_g']} g
+Fats Needs: {predictions['Fats_g']} g"""
+    pdf.chapter_body(metrics)
 
-        # 2. Nutrition Plan
-        try:
-            diet_text = []
-            for meal, items in diet.items():
-                try:
-                    meal_items = []
-                    for item in items:
-                        clean_item = ''.join(char for char in str(item) if ord(char) < 256)
-                        meal_items.append(clean_item)
-                    diet_text.append(f"{meal}:\n" + "\n".join(meal_items))
-                except Exception as e:
-                    raise RuntimeError(f"Diet item processing failed: {str(e)}")
-            
-            pdf.chapter_title('Personalized Nutrition Plan')
-            pdf.chapter_body("\n".join(diet_text))
-        except Exception as e:
-            raise RuntimeError(f"Nutrition section failed: {str(e)}")
+    pdf.chapter_title('Personalized Nutrition Plan')
+    diet_text = []
+    for meal, items in diet.items():
+        meal_items = []
+        for item in items:
+            clean_item = ''.join(char for char in item if ord(char) < 256)
+            meal_items.append(clean_item)
+        diet_text.append(f"{meal}:\n" + "\n".join(meal_items))
+    pdf.chapter_body("\n".join(diet_text))
 
-        # 3. Mental Performance Guide
-        try:
-            clean_advice = []
-            for item in advice:
-                try:
-                    clean_advice.append(''.join(char for char in str(item) if ord(char) < 256))
-                except:
-                    clean_advice.append("[Advice item unavailable]")
-            
-            pdf.chapter_title('Mental Performance Guide')
-            pdf.chapter_body("\n".join(clean_advice))
-        except Exception as e:
-            raise RuntimeError(f"Advice section failed: {str(e)}")
+    pdf.chapter_title('Mental Performance Guide')
+    clean_advice = [''.join(char for char in item if ord(char) < 256) for item in advice]
+    pdf.chapter_body("\n".join(clean_advice))
 
-        # 4. User Details
-        try:
-            user_details = [
-                f"Age: {user_input.get('Age', 'N/A')}",
-                f"Gender: {user_input.get('Gender', 'N/A')}",
-                f"Weight: {user_input.get('Weight', 'N/A')} kg",
-                f"Sport: {user_input.get('Sport_Type', 'N/A')}",
-                f"Exercise Type: {user_input.get('Exercise_Type', 'N/A')}"
-            ]
-            pdf.chapter_title('User Details')
-            pdf.chapter_body("\n".join(user_details))
-        except Exception as e:
-            raise RuntimeError(f"User details failed: {str(e)}")
+    pdf.chapter_title('User Details')
+    details = f"""Age: {user_input['Age']}
+Gender: {user_input['Gender']}
+Weight: {user_input['Weight']} kg
+Sport: {user_input['Sport_Type']}
+Exercise Type: {user_input['Exercise_Type']}"""
+    pdf.chapter_body(details)
 
-        # Finalize PDF
-        try:
-            return pdf.output(dest='S').encode('latin-1', 'replace')
-        except Exception as e:
-            raise RuntimeError(f"PDF finalization failed: {str(e)}")
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return None
+    return pdf.output(dest='S').encode('latin-1', 'replace')
 
 # ==================== PREDICTION ENGINE ====================
 def load_models():
@@ -318,81 +257,151 @@ def dashboard():
         account_details.account()
         return
 
-    required_keys = ['predictions', 'user_details']
-    if not all(k in st.session_state for k in required_keys):
-        st.error("Missing required data. Please complete the analysis first.")
-        return
-
-    # Generate performance metrics display
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        st.markdown("### Key Metrics")
-        st.metric("Endurance Score", 
-                f"{st.session_state.predictions.get('endurance_score', 'N/A')}/10")
-        st.metric("Injury Risk", 
-                st.session_state.predictions.get('injury_risk', 'N/A'))
-    
+    col1, col2 = st.columns([5, 2])
     with col2:
-        st.markdown("### Key Recommendations")
-        st.write("- Follow recommended nutrition plan")
-        st.write("- Implement recovery strategies")
-        st.write("- Monitor sleep patterns")
-
-    # Generate and display nutrition metrics
-    st.markdown("## 🥗 Nutrition Recommendations")
-    cols = st.columns(5)
-    with cols[0]:
-        st.metric("Proteins", f"{st.session_state.predictions.get('Protein_g', 'N/A')} g")
-    with cols[1]:
-        st.metric("Carbs", f"{st.session_state.predictions.get('Carbs_g', 'N/A')} g")
-    with cols[2]:
-        st.metric("Fats", f"{st.session_state.predictions.get('Fats_g', 'N/A')} g")
-    with cols[3]:
-        st.metric("Sleep", f"{st.session_state.predictions.get('sleep_hours', 'N/A')} hrs")
-    with cols[4]:
-        st.metric("Calories", f"{st.session_state.predictions.get('calories', 'N/A')} kcal")
-
-    # Generate report data
-    try:
-        diet_plan = generate_diet_plan(
-            st.session_state.predictions,
-            {'Weight': st.session_state.user_details.get('Weight', 70)}
+        profile_menu = st.selectbox(
+            label="Account Details",
+            options=["Profile", "Logout"],
+            index=None,
+            placeholder="👤 Account Details",
+            label_visibility="collapsed"
         )
-        mental_advice = generate_mental_advice(
-            st.session_state.predictions,
-            {'Fatigue_Score': st.session_state.get('fatigue', 5)}
-        )
-    except Exception as e:
-        st.error(f"Failed to generate report data: {str(e)}")
-        return
+        if profile_menu == "Profile":
+            profile()
+        elif profile_menu == "Logout":
+            with st.spinner("Logging out..."):
+                time.sleep(2)
+                logout()
 
-    # Generate and download PDF report
-    if diet_plan and mental_advice:
-        pdf_bytes = generate_pdf_report(
-            predictions=st.session_state.predictions,
-            diet=diet_plan,
-            advice=mental_advice,
-            user_input={
-                'Age': st.session_state.user_details.get('Age', ''),
-                'Gender': st.session_state.user_details.get('Gender', ''),
-                'Weight': st.session_state.user_details.get('Weight', ''),
-                'Sport_Type': st.session_state.get('sport', ''),
-                'Exercise_Type': st.session_state.get('exercise_type', '')
-            }
+    st.markdown("## 🏋️‍♂️ Athlete Information")
+    col1, col2, col3 = st.columns([1, 1.5, 1.5])
+
+
+    age = st.session_state.user_details['Age']
+    gender = st.session_state.user_details['Gender']
+
+    with col1:
+        sport = st.selectbox("Primary Sport", data.Sport_Type.unique().tolist(), index=None, placeholder="Enter your primary sport")
+        height = st.number_input("Height (cm)", min_value=150, max_value=220, value=None, placeholder="Enter your height")
+        hydration = st.selectbox("Hydration Level", ["Low", "Moderate", "High"], index=None, placeholder="Enter your hydration level")
+
+    with col2:
+        exercise_type = st.selectbox("Exercise Type", ["Endurance", "Strength", "HIIT", "Skill Training", "Recovery"], index=None, placeholder="Enter your exercise type")
+        weight = st.number_input("Weight (kg)", min_value=40, max_value=150, value=None, placeholder="Enter your weight")
+        speed_score = st.number_input("Running Speed (km/h)", min_value=10.0, max_value=30.0, value=None, placeholder="Enter your speed score", step=0.01)
+
+    with col3:
+        duration = st.number_input("Duration (min)", min_value=10, max_value=300, value=None, placeholder="Enter your workout duration")
+        intensity = st.selectbox("Intensity Level", ["Low", "Medium", "High"], index=None, placeholder="Enter your intensity level")    
+        fatigue = st.slider("Fatigue (1-10)", 1, 10, 8)
+    
+    def check_details():
+        if age is None or exercise_type is None or height is None or hydration is None or gender is None or duration is None or weight is None or speed_score is None or sport is None or intensity is None or fatigue is None:
+            st.error("Please fill in all fields.")
+            return False
+        return True
+
+    st.html("<hr>")
+
+    if st.button("Analyze My Performance", type="primary", use_container_width=True):
+        if not st.session_state.models_loaded:
+            st.error("Models failed to load. Please check model files.")
+            return
+
+        try:
+            heart_rate = 220 - age
+            strength_score = 100 / weight if weight < 100 else 150 / weight
+
+            with st.spinner("Analyzing your performance..."):
+                user_input = {
+                    'Age': age,
+                    'Gender': gender,
+                    'Weight': weight,
+                    'Sport_Type': sport,
+                    'Exercise_Type': exercise_type,
+                    'Duration_Minutes': duration,
+                    'Intensity_Level': intensity,
+                    'Hydration_Level': hydration,
+                    'Fatigue_Score': fatigue,
+                    'Heart_Rate': heart_rate,
+                    'Speed_Score': speed_score,
+                    'Strength_Score': strength_score
+                }
+
+                st.session_state.predictions = predict_performance(st.session_state.models, user_input)
+        except TypeError:
+            check_details()
+
+    if st.session_state.predictions:
+        st.markdown("## 📝 Performance Summary")
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.markdown("### Key Metrics")
+            st.metric("Endurance Score", f"{st.session_state.predictions['endurance_score']}/10")
+            st.metric("Injury Risk", st.session_state.predictions['injury_risk'])
+        with col2:
+            st.markdown("### Key Recommendations")
+            st.write("- Follow recommended nutrition plan from PDF report")
+            st.write("- Implement recovery strategies based on injury risk")
+            st.write("- Monitor sleep patterns and adjust training accordingly")
+        
+        st.html("<hr>")
+
+        with st.spinner("Visualizing your performance..."):
+            st.markdown("## Performance Report")
+            metric_scores = calculate_metric_scores(st.session_state.predictions)
+            df_metrics = pd.DataFrame({
+                'Metrics': list(metric_scores.keys()),
+                'Values': list(metric_scores.values())
+            })
+
+        df_metrics_pivot = df_metrics.pivot(
+            columns='Metrics',
+            values='Values'
+        ).reset_index(drop=True)
+
+        bar_colors = {
+            "Endurance": "#4B9BFF",
+            "Injury Risk": "#FF4B4B",
+            "Sleep Quality": "#2CA02C"
+        }
+
+        st.bar_chart(
+            df_metrics_pivot,
+            color=[bar_colors[col] for col in df_metrics_pivot.columns],
+            height=400
         )
 
-        if pdf_bytes:
-            st.download_button(
-                "📥 Download Full Report",
-                data=pdf_bytes,
-                file_name="neurofit_performance_report.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-        else:
-            st.warning("Failed to generate PDF report")
-    else:
-        st.error("Incomplete data for report generation")
+        st.caption("🔹 Higher scores are better for Endurance and Sleep. Lower is better for Injury Risk.")
+        
+        st.html("<hr>")
+
+        st.markdown("## 🥗 Nutrition Recommendations (Needed)")
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 2])
+        with col1:
+            st.metric("Proteins", f"{st.session_state.predictions['Protein_g']} g")
+        with col2:
+            st.metric("Carbohydrates", f"{st.session_state.predictions['Carbs_g']} g") 
+        with col3:
+            st.metric("Fats", f"{st.session_state.predictions['Fats_g']} g")
+        with col4:
+            sleep_hours = st.session_state.predictions['sleep_hours']
+            st.metric("Sleep Hours", f"{sleep_hours} hrs")
+        with col5:
+            calories = st.session_state.predictions['calories']
+            st.metric("Calories", f"{calories} kcal")
+
+        diet = generate_diet_plan(st.session_state.predictions, {'Weight': weight})
+        advice = generate_mental_advice(st.session_state.predictions, {'Fatigue_Score': fatigue})
+        pdf_bytes = generate_pdf_report(st.session_state.predictions, diet, advice, {
+            'Age': age,
+            'Gender': gender,
+            'Weight': weight,
+            'Sport_Type': sport,
+            'Exercise_Type': exercise_type
+        })
+
+        st.download_button("📥 Download Full Report", data=pdf_bytes, file_name="athlete_performance_report.pdf", mime="application/pdf", use_container_width=True)
 
 if __name__ == "__main__":
     dashboard()
