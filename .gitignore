@@ -1,6 +1,0 @@
-# Database
-neurofit_users.db
-*.db
-
-# Secrets
-secrets.toml
