@@ -1,7 +1,7 @@
 import time
 import base64
 import streamlit as st
-from login_page2 import login
+from login_page import login
 from check_db_access import check_db_access  # 🆕 Add this
 
 st.set_page_config(page_title="NeuroFit", page_icon=":runner:", layout="centered")

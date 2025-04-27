@@ -3,7 +3,7 @@ import time
 import sqlite3
 import bcrypt
 import streamlit as st
-from signup_page2 import init_database, get_user_details
+from signup_page import init_database, get_user_details
 from check_db_access import check_db_access
 
 # Initialize database
@@ -28,7 +28,7 @@ def login():
 
     if not st.session_state.authenticated:
         if st.session_state.show_signup:
-            from signup_page2 import signup
+            from signup_page import signup
             signup()
             if st.button("« Back to Login"):
                 st.session_state.show_signup = False
@@ -80,5 +80,5 @@ def login():
                 finally:
                     conn.close()
     else:
-        from interface2 import dashboard
+        from interface import dashboard
         dashboard()

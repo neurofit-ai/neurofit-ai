@@ -1,7 +1,7 @@
 import streamlit as st
 import time
-from signup_page2 import get_user_details, delete_user
-from login_page2 import logout
+from signup_page import get_user_details, delete_user
+from login_page import logout
 
 def account():
     # Back to Dashboard button
