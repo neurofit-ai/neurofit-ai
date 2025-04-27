@@ -407,25 +407,28 @@ def dashboard():
 
         diet = generate_diet_plan(st.session_state.predictions, {'Weight': weight})
         advice = generate_mental_advice(st.session_state.predictions, {'Fatigue_Score': fatigue})
-        try:
-            pdf_bytes = generate_pdf_report(st.session_state.predictions, diet, advice, {
+        pdf_bytes = generate_pdf_report(
+            predictions=st.session_state.predictions,
+            diet=diet_plan,
+            advice=mental_advice,
+            user_input={
                 'Age': age,
                 'Gender': gender,
                 'Weight': weight,
                 'Sport_Type': sport,
                 'Exercise_Type': exercise_type
-            })
-
-            if pdf_bytes:
-                st.download_button(
-                    "📥 Download Full Report",
-                    data=pdf_bytes,
-                    file_name="athlete_performance_report.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-        except Exception as e:
-            st.error(f"Failed to generate PDF report: {str(e)}")
+            }
+        )
+        
+        if pdf_bytes:
+            st.download_button(
+                "📥 Download Full Report",
+                data=pdf_bytes,
+                file_name="performance_report.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.error("Failed to generate PDF report")
 
 if __name__ == "__main__":
     dashboard()
