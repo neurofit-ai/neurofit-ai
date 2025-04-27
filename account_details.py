@@ -26,9 +26,10 @@ def account():
         st.write(f"**Name:** *{details['Name']}*")
         st.write(f"**Member since:** *{details['Date']}*")
         st.write(f"**Height:** *{st.session_state.user_details['Height']}* cm")
-    with col2:
-        st.write(f"**Email:** *{details['Username']}*")
         st.write(f"**Age:** *{st.session_state.user_details['Age']}* years")
+    with col2:
+        st.write(f"**Username:** *{details['Username']}*")
+        st.write(f"**Email:** *{details['Email']}*")
         st.write(f"**Weight:** *{st.session_state.user_details['Weight']}* kg")
 
     col1, col2 = st.columns([1, 1])
