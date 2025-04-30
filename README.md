@@ -47,11 +47,11 @@ streamlit run app.py
 
 ## 📸 Screenshots
 
-<img src="NeuroFit Login.png">
+<img src="NeuroFit Login.png" width="50%">
 
-<img src="NeuroFit Inputs.png">
+<img src="NeuroFit Inputs.png" width="50%">
 
-<img src="NeuroFit Output.png">
+<img src="NeuroFit Output.png" width="50%">
 
 ## 🤝 Contribution
 
