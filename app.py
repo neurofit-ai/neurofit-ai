@@ -4,7 +4,7 @@ import streamlit as st
 from login_page import login
 from check_db_access import check_db_access  # 🆕 Add this
 
-st.set_page_config(page_title="NeuroFit", page_icon=":runner:", layout="centered")
+st.set_page_config(page_title="NeuroFit", page_icon="🏃‍♂️", layout="centered")
 
 def set_bg_black():
     st.markdown(
